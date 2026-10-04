@@ -61,12 +61,21 @@ export function resetModule(key: string): PageResult {
   return listEntries(key)
 }
 
+// CSV 单元转义：含逗号、引号或换行时整体加引号并把引号翻倍，避免某列含分隔符后整列错位丢失。
+function csvCell(value: unknown): string {
+  const text = value === null || value === undefined ? '' : String(value)
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+  return text
+}
+
 export function exportEntries(key: string): { filename: string; content: string } {
   const meta = moduleMeta(key)
   const header = ['编号', ...meta.fields, '当前状态']
-  const lines = [header.join(',')]
+  const lines = [header.map(csvCell).join(',')]
   for (const row of listRows(key)) {
-    lines.push([row.id, ...meta.fields.map((field) => row[field] ?? ''), row.status].join(','))
+    lines.push([row.id, ...meta.fields.map((field) => csvCell(row[field] ?? '')), csvCell(row.status)].join(','))
   }
   return { filename: `${meta.name}-清单.csv`, content: `\uFEFF${lines.join('\n')}` }
 }
